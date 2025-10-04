@@ -1,0 +1,5 @@
+node_modules/
+attendance.json
+.DS_Store
+*.log
+.env

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synergy Solutions - Attendance System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏢 Synergy Solutions & Advisory Ltd.</h1>
+            <p class="subtitle">Employee Attendance System</p>
+        </header>
+
+        <div class="card">
+            <h2>Mark Your Attendance</h2>
+            <form id="attendanceForm">
+                <div class="form-group">
+                    <label for="employeeId">Employee ID</label>
+                    <input type="text" id="employeeId" name="employeeId" required placeholder="Enter your employee ID">
+                </div>
+
+                <div id="statusDisplay" class="status-display">
+                    <p class="loading">Enter your ID to check status...</p>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" id="checkInBtn" class="btn-submit btn-check-in" disabled>
+                        ⏰ Check In
+                    </button>
+                    <button type="button" id="checkOutBtn" class="btn-submit btn-check-out" disabled>
+                        🏁 Check Out
+                    </button>
+                </div>
+            </form>
+
+            <div id="message" class="message"></div>
+        </div>
+
+        <div class="card">
+            <h2>Today's Attendance</h2>
+            <div id="attendanceList" class="attendance-list">
+                <p class="loading">Loading...</p>
+            </div>
+        </div>
+
+        <div class="admin-link">
+            <a href="admin.html">🔐 Admin Login</a>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

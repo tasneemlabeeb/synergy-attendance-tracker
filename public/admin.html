@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Synergy Solutions & Advisory Ltd.</title>
+    <link rel="stylesheet" href="admin-style.css">
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-container">
+        <div class="login-card">
+            <div class="company-logo">
+                <h1>Synergy Solutions & Advisory Ltd.</h1>
+                <p>Attendance Management System</p>
+            </div>
+            <form id="loginForm">
+                <h2>Admin Login</h2>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required placeholder="Enter your email">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required placeholder="Enter your password">
+                </div>
+                <button type="submit" class="btn-primary">Login</button>
+                <div id="loginMessage" class="message"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="dashboardScreen" class="dashboard-container" style="display: none;">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-content">
+                <h1>📋 Admin Dashboard</h1>
+                <div class="header-actions">
+                    <span class="admin-email" id="adminEmail"></span>
+                    <button id="logoutBtn" class="btn-logout">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="employees">👥 Employees</button>
+            <button class="tab-btn" data-tab="attendance">📊 Attendance</button>
+            <button class="tab-btn" data-tab="reports">📈 Reports</button>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Employees Tab -->
+            <div id="employeesTab" class="tab-panel active">
+                <div class="panel-header">
+                    <h2>Employee Management</h2>
+                    <button id="addEmployeeBtn" class="btn-primary">+ Add Employee</button>
+                </div>
+
+                <div class="employees-list" id="employeesList">
+                    <p class="loading">Loading employees...</p>
+                </div>
+            </div>
+
+            <!-- Attendance Tab -->
+            <div id="attendanceTab" class="tab-panel">
+                <div class="panel-header">
+                    <h2>Attendance Records</h2>
+                </div>
+
+                <div class="advanced-filters">
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="filterEmployeeId">Employee ID</label>
+                            <input type="text" id="filterEmployeeId" class="filter-input" placeholder="Enter employee ID">
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="filterEmployeeName">Employee Name</label>
+                            <input type="text" id="filterEmployeeName" class="filter-input" placeholder="Enter name">
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="filterDepartment">Department</label>
+                            <select id="filterDepartment" class="filter-input">
+                                <option value="">All Departments</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="filterMonth">Month</label>
+                            <select id="filterMonth" class="filter-input">
+                                <option value="">All Months</option>
+                                <option value="1">January</option>
+                                <option value="2">February</option>
+                                <option value="3">March</option>
+                                <option value="4">April</option>
+                                <option value="5">May</option>
+                                <option value="6">June</option>
+                                <option value="7">July</option>
+                                <option value="8">August</option>
+                                <option value="9">September</option>
+                                <option value="10">October</option>
+                                <option value="11">November</option>
+                                <option value="12">December</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="filterYear">Year</label>
+                            <select id="filterYear" class="filter-input">
+                                <!-- Will be populated dynamically -->
+                            </select>
+                        </div>
+                        
+                        <div class="filter-actions">
+                            <button id="filterBtn" class="btn-primary">🔍 Apply Filters</button>
+                            <button id="clearFilterBtn" class="btn-secondary">Clear</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="attendance-summary" id="attendanceSummary" style="display: none;">
+                    <div class="summary-card">
+                        <h4>Total Records</h4>
+                        <p id="totalRecords">0</p>
+                    </div>
+                    <div class="summary-card">
+                        <h4>Total Employees</h4>
+                        <p id="totalEmployees">0</p>
+                    </div>
+                    <div class="summary-card">
+                        <h4>Avg Work Hours</h4>
+                        <p id="avgWorkHours">0</p>
+                    </div>
+                </div>
+
+                <div class="attendance-table-container">
+                    <table class="attendance-table" id="attendanceTable">
+                        <thead>
+                            <tr>
+                                <th>Employee ID</th>
+                                <th>Name</th>
+                                <th>Department</th>
+                                <th>Date</th>
+                                <th>Check In</th>
+                                <th>Check Out</th>
+                                <th>Work Hours</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendanceTableBody">
+                            <tr><td colspan="7" class="loading">Loading attendance...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Reports Tab -->
+            <div id="reportsTab" class="tab-panel">
+                <div class="panel-header">
+                    <h2>Monthly Reports</h2>
+                </div>
+
+                <div class="report-card">
+                    <h3>Export Attendance Report</h3>
+                    <p>Download monthly attendance report in Excel format</p>
+                    
+                    <div class="report-form">
+                        <div class="form-group">
+                            <label for="reportMonth">Month</label>
+                            <select id="reportMonth" class="form-control">
+                                <option value="1">January</option>
+                                <option value="2">February</option>
+                                <option value="3">March</option>
+                                <option value="4">April</option>
+                                <option value="5">May</option>
+                                <option value="6">June</option>
+                                <option value="7">July</option>
+                                <option value="8">August</option>
+                                <option value="9">September</option>
+                                <option value="10">October</option>
+                                <option value="11">November</option>
+                                <option value="12">December</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="reportYear">Year</label>
+                            <select id="reportYear" class="form-control">
+                                <!-- Will be populated dynamically -->
+                            </select>
+                        </div>
+                        
+                        <button id="exportBtn" class="btn-success">📥 Download Excel Report</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Employee Modal -->
+    <div id="employeeModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modalTitle">Add Employee</h2>
+            <form id="employeeForm">
+                <div class="form-group">
+                    <label for="modalEmployeeId">Employee ID *</label>
+                    <input type="text" id="modalEmployeeId" required placeholder="e.g., EMP001">
+                </div>
+                <div class="form-group">
+                    <label for="modalEmployeeName">Full Name *</label>
+                    <input type="text" id="modalEmployeeName" required placeholder="Enter full name">
+                </div>
+                <div class="form-group">
+                    <label for="modalEmail">Email</label>
+                    <input type="email" id="modalEmail" placeholder="employee@synergy.com.bd">
+                </div>
+                <div class="form-group">
+                    <label for="modalPhone">Phone</label>
+                    <input type="tel" id="modalPhone" placeholder="+880-XXX-XXXXXX">
+                </div>
+                <div class="form-group">
+                    <label for="modalDepartment">Department</label>
+                    <input type="text" id="modalDepartment" placeholder="e.g., IT, HR, Finance">
+                </div>
+                <div class="form-group">
+                    <label for="modalPosition">Position</label>
+                    <input type="text" id="modalPosition" placeholder="e.g., Manager, Developer">
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="modalIsActive" checked>
+                        Active Employee
+                    </label>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn-primary">Save</button>
+                    <button type="button" class="btn-secondary" id="cancelBtn">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="admin-script.js"></script>
+</body>
+</html>
