@@ -49,6 +49,10 @@ app.use(express.static('public'));
 // Path to data files
 const DATA_FILE = path.join(__dirname, 'data', 'attendance.json');
 const EMPLOYEES_FILE = path.join(__dirname, 'data', 'employees.json');
+const ALLOWED_IPS_FILE = path.join(__dirname, 'data', 'allowed-ips.json');
+
+// Dynamic IP list (loaded from file)
+let dynamicAllowedIPs = [];
 
 // Initialize data files if they don't exist
 async function initializeDataFiles() {
@@ -71,6 +75,42 @@ async function initializeDataFiles() {
     } catch {
         await fs.writeFile(EMPLOYEES_FILE, JSON.stringify([]));
     }
+    
+    // Initialize allowed IPs file with defaults
+    try {
+        await fs.access(ALLOWED_IPS_FILE);
+        // Load existing IPs
+        const data = await fs.readFile(ALLOWED_IPS_FILE, 'utf8');
+        dynamicAllowedIPs = JSON.parse(data);
+        console.log(`✅ Loaded ${dynamicAllowedIPs.length} allowed IP(s) from configuration`);
+    } catch {
+        // Create with defaults from ALLOWED_IPS constant
+        dynamicAllowedIPs = ALLOWED_IPS.map((ip, index) => ({
+            id: Date.now() + index,
+            ipAddress: ip,
+            description: `Office IP ${index + 1}`,
+            isActive: true,
+            createdAt: new Date().toISOString()
+        }));
+        await fs.writeFile(ALLOWED_IPS_FILE, JSON.stringify(dynamicAllowedIPs, null, 2));
+        console.log(`✅ Created allowed IPs file with ${dynamicAllowedIPs.length} default IP(s)`);
+    }
+}
+
+// Helper functions for managing allowed IPs
+async function getAllowedIPs() {
+    try {
+        const data = await fs.readFile(ALLOWED_IPS_FILE, 'utf8');
+        return JSON.parse(data);
+    } catch {
+        return [];
+    }
+}
+
+async function saveAllowedIPs(ips) {
+    await fs.writeFile(ALLOWED_IPS_FILE, JSON.stringify(ips, null, 2));
+    dynamicAllowedIPs = ips;
+    console.log(`💾 Saved ${ips.length} allowed IP(s) to configuration`);
 }
 
 // Middleware to check if user is authenticated
@@ -110,10 +150,12 @@ function isIPInSubnet(ip, subnet) {
     return (ipNum & mask) === (subnetNum & mask);
 }
 
-// Main IP validation function with enhanced security
+// Main IP validation function with enhanced security (using dynamic IP list)
 function isIPAllowed(ip) {
     // Clean up IPv6-mapped IPv4 addresses
     const cleanIP = ip.replace(/^::ffff:/, '');
+    
+    console.log(`🔍 Checking IP: ${cleanIP}`);
     
     // Allow localhost for testing (remove in production)
     if (ALLOW_LOCALHOST_FOR_TESTING) {
@@ -123,24 +165,35 @@ function isIPAllowed(ip) {
         }
     }
     
+    // Get active IPs from dynamic list
+    const activeIPs = dynamicAllowedIPs.filter(ipConfig => ipConfig.isActive);
+    
+    if (activeIPs.length === 0) {
+        console.log('⚠️  WARNING: No active allowed IPs configured!');
+        return false;
+    }
+    
     // Check if IP is in allowed list
-    for (const allowedIP of ALLOWED_IPS) {
+    for (const ipConfig of activeIPs) {
+        const allowedIP = ipConfig.ipAddress;
+        
         if (allowedIP.includes('/')) {
             // CIDR notation (e.g., 192.168.0.0/24)
             if (isIPInSubnet(cleanIP, allowedIP)) {
-                console.log(`✅ IP ${cleanIP} is within allowed network ${allowedIP}`);
+                console.log(`✅ IP ${cleanIP} is within allowed network ${allowedIP} (${ipConfig.description})`);
                 return true;
             }
         } else {
             // Exact match
-            if (cleanIP === allowedIP) {
-                console.log(`✅ IP ${cleanIP} matches allowed IP`);
+            if (cleanIP === allowedIP || cleanIP === allowedIP.replace(/\/\d+$/, '')) {
+                console.log(`✅ IP ${cleanIP} matches allowed IP (${ipConfig.description})`);
                 return true;
             }
         }
     }
     
     console.log(`❌ IP ${cleanIP} is NOT in allowed networks`);
+    console.log(`   Active allowed IPs: ${activeIPs.map(ip => ip.ipAddress).join(', ')}`);
     return false;
 }
 
@@ -361,6 +414,158 @@ app.delete('/api/admin/employees/:employeeId', isAuthenticated, async (req, res)
         console.error('Error deleting employee:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
+});
+
+// ==================== IP WHITELIST MANAGEMENT ====================
+
+// Get all allowed IPs
+app.get('/api/admin/allowed-ips', isAuthenticated, async (req, res) => {
+    try {
+        const ips = await getAllowedIPs();
+        res.json({ 
+            ips,
+            testingMode: ALLOW_LOCALHOST_FOR_TESTING
+        });
+    } catch (error) {
+        console.error('Error fetching allowed IPs:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Add new allowed IP
+app.post('/api/admin/allowed-ips', isAuthenticated, async (req, res) => {
+    try {
+        const { ipAddress, description } = req.body;
+        
+        if (!ipAddress) {
+            return res.status(400).json({ error: 'IP address is required' });
+        }
+        
+        // Basic IP validation
+        const ipRegex = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$|^([0-9a-fA-F:]+)(\/\d{1,3})?$/;
+        if (!ipRegex.test(ipAddress)) {
+            return res.status(400).json({ error: 'Invalid IP address format' });
+        }
+        
+        const ips = await getAllowedIPs();
+        
+        // Check if IP already exists
+        if (ips.some(ip => ip.ipAddress === ipAddress)) {
+            return res.status(400).json({ error: 'This IP address is already in the allowed list' });
+        }
+        
+        const newIP = {
+            id: Date.now(),
+            ipAddress,
+            description: description || 'Office IP',
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            createdBy: req.session.email
+        };
+        
+        ips.push(newIP);
+        await saveAllowedIPs(ips);
+        
+        console.log(`✅ Added new allowed IP: ${ipAddress} (${description})`);
+        
+        res.json({ 
+            message: 'IP address added successfully',
+            ip: newIP
+        });
+    } catch (error) {
+        console.error('Error adding allowed IP:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Update allowed IP
+app.put('/api/admin/allowed-ips/:id', isAuthenticated, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { ipAddress, description, isActive } = req.body;
+        
+        const ips = await getAllowedIPs();
+        const index = ips.findIndex(ip => ip.id === parseInt(id));
+        
+        if (index === -1) {
+            return res.status(404).json({ error: 'IP address not found' });
+        }
+        
+        // If updating IP address, validate format
+        if (ipAddress && ipAddress !== ips[index].ipAddress) {
+            const ipRegex = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$|^([0-9a-fA-F:]+)(\/\d{1,3})?$/;
+            if (!ipRegex.test(ipAddress)) {
+                return res.status(400).json({ error: 'Invalid IP address format' });
+            }
+            
+            // Check if new IP already exists
+            if (ips.some(ip => ip.ipAddress === ipAddress && ip.id !== parseInt(id))) {
+                return res.status(400).json({ error: 'This IP address is already in the allowed list' });
+            }
+        }
+        
+        ips[index] = {
+            ...ips[index],
+            ipAddress: ipAddress || ips[index].ipAddress,
+            description: description !== undefined ? description : ips[index].description,
+            isActive: isActive !== undefined ? isActive : ips[index].isActive,
+            updatedAt: new Date().toISOString(),
+            updatedBy: req.session.email
+        };
+        
+        await saveAllowedIPs(ips);
+        
+        console.log(`✅ Updated allowed IP: ${ips[index].ipAddress} (${ips[index].description})`);
+        
+        res.json({ 
+            message: 'IP address updated successfully',
+            ip: ips[index]
+        });
+    } catch (error) {
+        console.error('Error updating allowed IP:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Delete allowed IP
+app.delete('/api/admin/allowed-ips/:id', isAuthenticated, async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const ips = await getAllowedIPs();
+        const filteredIPs = ips.filter(ip => ip.id !== parseInt(id));
+        
+        if (ips.length === filteredIPs.length) {
+            return res.status(404).json({ error: 'IP address not found' });
+        }
+        
+        // Prevent deleting all IPs
+        if (filteredIPs.length === 0) {
+            return res.status(400).json({ 
+                error: 'Cannot delete the last allowed IP address. Add another IP first.' 
+            });
+        }
+        
+        await saveAllowedIPs(filteredIPs);
+        
+        console.log(`✅ Deleted allowed IP (ID: ${id})`);
+        
+        res.json({ message: 'IP address deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting allowed IP:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Get current client IP (for testing)
+app.get('/api/admin/my-ip', isAuthenticated, (req, res) => {
+    const clientIP = getClientIP(req);
+    const cleanIP = clientIP.replace(/^::ffff:/, '');
+    res.json({ 
+        ip: cleanIP,
+        rawIP: clientIP,
+        isAllowed: isIPAllowed(clientIP)
+    });
 });
 
 // ==================== ATTENDANCE SYSTEM ====================

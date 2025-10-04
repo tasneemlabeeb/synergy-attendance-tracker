@@ -48,6 +48,7 @@
             <button class="tab-btn active" data-tab="employees">👥 Employees</button>
             <button class="tab-btn" data-tab="attendance">📊 Attendance</button>
             <button class="tab-btn" data-tab="reports">📈 Reports</button>
+            <button class="tab-btn" data-tab="ips">🔒 IP Whitelist</button>
         </div>
 
         <!-- Tab Content -->
@@ -199,6 +200,24 @@
                     </div>
                 </div>
             </div>
+
+            <!-- IP Whitelist Tab -->
+            <div id="ipsTab" class="tab-panel">
+                <div class="panel-header">
+                    <h2>🔒 IP Address Whitelist</h2>
+                    <button id="addIPBtn" class="btn-primary">+ Add IP Address</button>
+                </div>
+
+                <div class="info-card">
+                    <h4>📍 Your Current IP Address:</h4>
+                    <p id="currentIP" class="ip-display">Loading...</p>
+                    <p class="info-text">Only IP addresses in the whitelist below can mark attendance.</p>
+                </div>
+
+                <div class="ips-list" id="ipsList">
+                    <p class="loading">Loading IP addresses...</p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -241,6 +260,46 @@
                 <div class="modal-actions">
                     <button type="submit" class="btn-primary">Save</button>
                     <button type="button" class="btn-secondary" id="cancelBtn">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add/Edit IP Address Modal -->
+    <div id="ipModal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="ipModalClose">&times;</span>
+            <h2 id="ipModalTitle">Add IP Address</h2>
+            <form id="ipForm">
+                <div class="form-group">
+                    <label for="modalIPAddress">IP Address *</label>
+                    <input type="text" id="modalIPAddress" required placeholder="e.g., 103.187.94.18/32 or 192.168.0.0/24">
+                    <small class="form-hint">
+                        Formats: Single IP (103.187.94.18/32) or Network (192.168.0.0/24)
+                    </small>
+                </div>
+                <div class="form-group">
+                    <label for="modalIPDescription">Description *</label>
+                    <input type="text" id="modalIPDescription" required placeholder="e.g., Main Office, Branch Office">
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="modalIPIsActive" checked>
+                        Active (Enable IP checking)
+                    </label>
+                </div>
+                <div class="info-card" style="margin-top: 15px;">
+                    <h4>💡 Tips:</h4>
+                    <ul style="margin: 10px 0; padding-left: 20px; font-size: 0.9em;">
+                        <li>For single IP: Add /32 (e.g., 103.187.94.18/32)</li>
+                        <li>For network range: Use CIDR notation (e.g., 192.168.0.0/24)</li>
+                        <li>Find your public IP: <a href="https://whatismyipaddress.com" target="_blank">whatismyipaddress.com</a></li>
+                        <li>Your current IP is shown above in the IP Whitelist tab</li>
+                    </ul>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn-primary">Save</button>
+                    <button type="button" class="btn-secondary" id="ipCancelBtn">Cancel</button>
                 </div>
             </form>
         </div>

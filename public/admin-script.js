@@ -462,3 +462,194 @@ document.getElementById('exportBtn').addEventListener('click', async () => {
         console.error('Export error:', error);
     }
 });
+
+// ==================== IP WHITELIST MANAGEMENT ====================
+
+let ipsData = [];
+let currentIPId = null;
+const ipModal = document.getElementById('ipModal');
+const ipForm = document.getElementById('ipForm');
+
+// Load current IP address
+async function loadCurrentIP() {
+    try {
+        const response = await fetch('/api/admin/my-ip');
+        const data = await response.json();
+        
+        const ipDisplay = document.getElementById('currentIP');
+        ipDisplay.innerHTML = `
+            <strong>${data.ip}</strong>
+            ${data.isAllowed ? 
+                '<span class="status-badge status-active">✅ Allowed</span>' : 
+                '<span class="status-badge status-inactive">❌ Not Allowed</span>'}
+        `;
+    } catch (error) {
+        console.error('Error loading current IP:', error);
+        document.getElementById('currentIP').textContent = 'Error loading IP';
+    }
+}
+
+// Load all IP addresses
+async function loadIPs() {
+    try {
+        const response = await fetch('/api/admin/allowed-ips');
+        const data = await response.json();
+        
+        ipsData = data.ips;
+        displayIPs();
+        
+        if (data.testingMode) {
+            const ipsList = document.getElementById('ipsList');
+            const warning = document.createElement('div');
+            warning.className = 'info-card warning-card';
+            warning.innerHTML = `
+                <h4>⚠️ Testing Mode Active</h4>
+                <p>Localhost connections are currently allowed. Disable testing mode in production!</p>
+            `;
+            ipsList.prepend(warning);
+        }
+    } catch (error) {
+        console.error('Error loading IPs:', error);
+        document.getElementById('ipsList').innerHTML = '<p class="error">Failed to load IP addresses</p>';
+    }
+}
+
+// Display IP addresses
+function displayIPs() {
+    const ipsList = document.getElementById('ipsList');
+    
+    if (ipsData.length === 0) {
+        ipsList.innerHTML = '<p class="no-data">No IP addresses configured. Add your first IP address!</p>';
+        return;
+    }
+    
+    ipsList.innerHTML = ipsData.map(ip => `
+        <div class="employee-card ip-card ${!ip.isActive ? 'inactive' : ''}">
+            <div class="employee-info">
+                <div class="employee-name">
+                    <strong>${ip.ipAddress}</strong>
+                    ${ip.isActive ? 
+                        '<span class="status-badge status-active">Active</span>' : 
+                        '<span class="status-badge status-inactive">Inactive</span>'}
+                </div>
+                <div class="employee-details">
+                    <p><strong>Description:</strong> ${ip.description}</p>
+                    <p><strong>Added:</strong> ${new Date(ip.createdAt).toLocaleDateString()}</p>
+                    ${ip.createdBy ? `<p><strong>Added by:</strong> ${ip.createdBy}</p>` : ''}
+                </div>
+            </div>
+            <div class="employee-actions">
+                <button class="btn-edit" onclick="editIP(${ip.id})">Edit</button>
+                <button class="btn-delete" onclick="deleteIP(${ip.id})">Delete</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Add IP button
+document.getElementById('addIPBtn').addEventListener('click', () => {
+    currentIPId = null;
+    document.getElementById('ipModalTitle').textContent = 'Add IP Address';
+    document.getElementById('modalIPAddress').value = '';
+    document.getElementById('modalIPDescription').value = '';
+    document.getElementById('modalIPIsActive').checked = true;
+    ipModal.style.display = 'block';
+});
+
+// Close IP modal
+document.getElementById('ipModalClose').addEventListener('click', () => {
+    ipModal.style.display = 'none';
+});
+
+document.getElementById('ipCancelBtn').addEventListener('click', () => {
+    ipModal.style.display = 'none';
+});
+
+// Edit IP
+window.editIP = function(id) {
+    const ip = ipsData.find(i => i.id === id);
+    if (!ip) return;
+    
+    currentIPId = id;
+    document.getElementById('ipModalTitle').textContent = 'Edit IP Address';
+    document.getElementById('modalIPAddress').value = ip.ipAddress;
+    document.getElementById('modalIPDescription').value = ip.description;
+    document.getElementById('modalIPIsActive').checked = ip.isActive;
+    ipModal.style.display = 'block';
+};
+
+// Delete IP
+window.deleteIP = async function(id) {
+    const ip = ipsData.find(i => i.id === id);
+    if (!ip) return;
+    
+    if (!confirm(`Are you sure you want to delete IP address: ${ip.ipAddress}?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/admin/allowed-ips/${id}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert(data.message);
+            loadIPs();
+            loadCurrentIP(); // Refresh current IP status
+        } else {
+            alert(data.error);
+        }
+    } catch (error) {
+        alert('Network error. Please try again.');
+        console.error('Delete error:', error);
+    }
+};
+
+// Submit IP form
+ipForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const ipData = {
+        ipAddress: document.getElementById('modalIPAddress').value.trim(),
+        description: document.getElementById('modalIPDescription').value.trim(),
+        isActive: document.getElementById('modalIPIsActive').checked
+    };
+    
+    try {
+        const url = currentIPId ? 
+            `/api/admin/allowed-ips/${currentIPId}` : 
+            '/api/admin/allowed-ips';
+        const method = currentIPId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ipData)
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert(data.message);
+            ipModal.style.display = 'none';
+            loadIPs();
+            loadCurrentIP(); // Refresh current IP status
+        } else {
+            alert(data.error);
+        }
+    } catch (error) {
+        alert('Network error. Please try again.');
+        console.error('Save error:', error);
+    }
+});
+
+// Initialize IP tab when switched to
+const ipsTabBtn = document.querySelector('[data-tab="ips"]');
+if (ipsTabBtn) {
+    ipsTabBtn.addEventListener('click', () => {
+        loadIPs();
+        loadCurrentIP();
+    });
+}
