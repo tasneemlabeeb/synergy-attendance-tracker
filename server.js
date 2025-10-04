@@ -12,15 +12,15 @@ const PORT = 9876;
 // OFFICE NETWORK CONFIGURATION
 // ========================================
 const ALLOWED_IPS = [
-    '192.168.0.0/24',      // Your office network (allows 192.168.0.1 - 192.168.0.254)
+    '103.187.94.18/32',    // Synergy Office Public IP (IPv4)
+    '2401:f40:1215:147:b823:7a1:4566:8771/128',  // Synergy Office Public IP (IPv6)
     // Add more office locations if needed:
-    // '192.168.1.0/24',   // Another office location
-    // '10.0.0.0/24',      // Branch office
+    // '103.187.94.19/32',   // Another office location
 ];
 
 // For testing purposes, you can temporarily allow localhost
 // Set to false in production!
-const ALLOW_LOCALHOST_FOR_TESTING = true;
+const ALLOW_LOCALHOST_FOR_TESTING = false;
 
 // ========================================
 // RATE LIMITING CONFIGURATION
